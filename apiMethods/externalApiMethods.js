@@ -1,7 +1,7 @@
 module.exports = (() => {
   const axios = require("axios");
   const config = require("../config/apiConfig");
-
+  const https = require('https')
   const handleAxiosError = (error, functionName) => {
     console.error(`Error in ${functionName}:`, error.message);
 
@@ -248,6 +248,61 @@ module.exports = (() => {
         res.json(response.data);
       } catch (error) {
         handleAxiosError(error, "typeTest");
+        res.status(500).json({ error: "Failed to process POST request" });
+      }
+    },
+
+     Coois: async (body, res) => {
+      try {
+        console.log(
+          "Sending POST payload to Coois API:",
+          JSON.stringify(body, null, 2)
+        );
+        const agent = new https.Agent({ rejectUnauthorized: false }); // <-- Add this line
+        const response = await axios.post(
+          config.THIRD_PARTY_API_URL_POST_COOIS_Order_Confirmation,
+          body,
+          {
+            headers: {
+              Authorization: getAuthHeader(),
+            },
+            httpsAgent: agent,
+          }
+        );
+        console.log(
+          "POST Response from Coois API:",
+          JSON.stringify(response.data, null, 2)
+        );
+        res.json(response.data);
+      } catch (error) {
+        handleAxiosError(error, "Coois");
+        res.status(500).json({ error: "Failed to process POST request" });
+      }
+    },
+    Co11: async (body, res) => {
+      try {
+        console.log(
+          "Sending POST payload to Co11 API:",
+          JSON.stringify(body, null, 2)
+        );
+        const agent = new https.Agent({ rejectUnauthorized: false }); // Add this line
+        const response = await axios.post(
+          config.THIRD_PARTY_API_URL_POST_CO11_Order_Confirmation_ZCO11N,
+          body,
+          {
+            headers: {
+              Authorization: getAuthHeader(),
+            },
+            httpsAgent: agent, // Add this line
+          }
+        );
+        console.log(
+          "POST Response from Co11 API:",
+          JSON.stringify(response.data, null, 2)
+        );
+        res.json(response.data);
+      } catch (error) {
+        handleAxiosError(error, "Co11");
         res.status(500).json({ error: "Failed to process POST request" });
       }
     },
