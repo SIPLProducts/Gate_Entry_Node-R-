@@ -1,7 +1,36 @@
+const { machinesensor, machinesensorcount, ppSchema, ppcount } = require('../models/userCreationModel');
+
+
+function getFormattedDateTime() {
+  const now = new Date();
+
+  let day = String(now.getDate()).padStart(2, '0');
+  let month = String(now.getMonth() + 1).padStart(2, '0'); // Month starts from 0
+  let year = now.getFullYear();
+
+  let hours = now.getHours();
+  let minutes = String(now.getMinutes()).padStart(2, '0');
+
+  let ampm = hours >= 12 ? 'pm' : 'am';
+
+  hours = hours % 12;
+  hours = hours ? hours : 12; // handle midnight (0)
+
+  return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
+}
 module.exports = (() => {
+  const express = require('express');
+  const router = express.Router();
+  const firebaseService = require('../config/firebaseService');
   const axios = require("axios");
+  const https = require("https");
   const config = require("../config/apiConfig");
-  const https = require('https')
+  // Allow SAP self-signed SSL
+  const sapAxios = axios.create({
+    httpsAgent: new https.Agent({
+      rejectUnauthorized: false
+    })
+  });
   const handleAxiosError = (error, functionName) => {
     console.error(`Error in ${functionName}:`, error.message);
 
@@ -20,6 +49,8 @@ module.exports = (() => {
     return { error: `Error processing your request in ${functionName}` };
   };
 
+
+
   const getAuthHeader = () => {
     if (!config.THIRD_PARTY_USERNAME || !config.THIRD_PARTY_PASSWORD) {
       throw new Error("Third-party API credentials are missing");
@@ -29,282 +60,439 @@ module.exports = (() => {
     const token = Buffer.from(credentials).toString("base64");
     return `Basic ${token}`;
   };
-  const getAuthHeader2 = () => {
-    if (!config.THIRD_PARTY_USERNAME2 || !config.THIRD_PARTY_PASSWORD2) {
-      throw new Error("Third-party API credentials are missing");
-    }
-
-    const credentials = `${config.THIRD_PARTY_USERNAME2}:${config.THIRD_PARTY_PASSWORD2}`;
-    const token = Buffer.from(credentials).toString("base64");
-    return `Basic ${token}`;
-  };
-
   return {
-    Login: async (body, res) => {
+    getMotorsLogsData: async (req, res) => {
       try {
-        console.log(
-          "Sending POST payload to LOgin API:",
-          JSON.stringify(body, null, 2)
-        );
-        console.log(config.THIRD_PARTY_API_URL_POST_LOGIN);
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_LOGIN,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader2(),
-            },
-          }
-        );
+        const data = await firebaseService.getMotorLogs();
 
-        res.json(response.data);
-      } catch (error) {
-        if (error.response) {
-          console.error("Error Response Status:", error.response.status);
-          console.error("Error Response Data:", error.response.data);
-          console.error("Error Response Headers:", error.response.headers);
-        } else {
-          console.error("Error Message:", error.message);
+        if (!data || data.length === 0) {
+          return res.status(200).json({
+            message: "No Data Available",
+            data: [],
+            status: 200
+          })
+
         }
 
-        const errorResponse = handleAxiosError(error, "Login");
-        res.status(500).json(errorResponse);
-      }
-    },
-    getLotReports: async (body, res) => {
-      try {
-        console.log(
-          "Sending PUT payload to getLotReports API:",
-          JSON.stringify(body, null, 2)
-        );
-        const response = await axios.put(
-          config.THIRD_PARTY_API_URL_PUT_GET_LOT_REPORTS,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader(),
-            },
-          }
-        );
-        console.log(
-          "PUT Response from getLotReports API:",
-          JSON.stringify(response.data, null, 2)
-        );
-        res.json(response.data);
+        res.status(200).json({
+          message: "Data Fetched Successfully",
+          data: data,
+          status: 200
+        })
+
       } catch (error) {
-        handleAxiosError(error, "getLotReports");
-        res.status(500).json({ error: "Failed to process PUT request" });
+        res.status(500).json({
+          message: "Failed to Fetch Data"
+        })
+
       }
+
     },
-    updateResultRecording: async (body, res) => {
+
+    machinesensorSave: async (req, res) => {
+      // console.log("newCompanyCreation ", req, res)
+      console.log("newCompanyCreation request received", req);
       try {
-        console.log(
-          "Sending POST payload to updateResultRecording API:",
-          JSON.stringify(body, null, 2)
+
+        const { machine, sensor } = req;
+
+        const counter = await machinesensorcount.findOneAndUpdate(
+          { name: "machinesensorUniqueId" },
+          { $inc: { value: 1 } },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
         );
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_UPDATE_RESULT_RECORDING,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader(),
-            },
-          }
-        );
-        console.log(
-          "POST Response from updateResultRecording API:",
-          JSON.stringify(response.data, null, 2)
-        );
-        res.json(response.data);
+        const machinesensorUniqueId = counter.value;
+        console.log("machinesensorUniqueId", machinesensorUniqueId);
+        const Payload = new machinesensor({
+          machine,
+          sensor,
+          machinesensorUniqueId
+        })
+
+        const storedData = await Payload.save()
+
+        res.status(200).json({
+          message: "Created Successfully",
+          status: 200,
+          data: storedData,
+          machinesensorUniqueId
+        })
+
       } catch (error) {
-        handleAxiosError(error, "updateResultRecording");
-        res.status(500).json({ error: "Failed to process POST request" });
+        console.error("Error in ::", error);
+        res.status(500).json({
+          message: "Failed to Save",
+          status: 500,
+          error: error.message
+        })
       }
     },
-    UDsubmitResult: async (body, res) => {
+    machinesensorUpdate: async (req, res) => {
+      console.log("req.params:", req.params, "req.body:", req);
+
       try {
-        console.log(
-          "Sending POST payload to UDsubmitResult API:",
-          JSON.stringify(body, null, 2)
-        );
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_UDSUBMIT_RESULT,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader(),
-            },
-          }
+        const machinesensorUniqueId = Number(req.machinesensorUniqueId); // Convert to number
+        if (isNaN(machinesensorUniqueId)) {
+          return res.status(400).json({
+            message: "Invalid Customer ID",
+            status: 400
+          });
+        }
+
+        const updateObj = req;
+        console.log("companyUniqueId:", machinesensorUniqueId);
+        console.log("updateObj:", updateObj);
+
+        const updateUserObj = await machinesensor.findOneAndUpdate(
+          { machinesensorUniqueId: machinesensorUniqueId },
+          { $set: updateObj },
+          { new: true, runValidators: true }
         );
 
-        console.log(
-          "POST Response from UDsubmitResult API:",
-          JSON.stringify(response.data, null, 2)
-        );
-        res.json(response.data);
+        console.log("updateUserObj:", updateUserObj);
+
+        if (!updateUserObj) {
+          return res.status(404).json({
+            message: "Not found based on given Id",
+            status: 404
+          });
+        }
+
+        res.status(200).json({
+          message: "Data Updated Successfully",
+          status: 200,
+          updatedList: updateUserObj
+        });
+
       } catch (error) {
-        handleAxiosError(error, "UDsubmitResult");
-        res.status(500).json({ error: "Failed to process POST request" });
+        console.error("Error updating company:", error);
+        res.status(500).json({
+          message: "Failed to Update",
+          status: 500,
+          error: error.message
+        });
       }
     },
-    reportZQAR: async (body, res) => {
+    machinesensorList: async (req, res) => {
       try {
-        console.log(
-          "Sending POST payload to reportZQAR API:",
-          JSON.stringify(body, null, 2)
-        );
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_REPORT_ZQAR,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader(),
-            },
-          }
-        );
+        const List = await machinesensor.find()
 
-        console.log(
-          "POST Response from reportZQAR API:",
-          JSON.stringify(response.data, null, 2)
-        );
-        res.json(response.data);
+        if (!List || List.length === 0) {
+          return res.status(200).json({
+            message: "No Data Available",
+            List: [],
+            status: 200
+          })
+
+        }
+
+        res.status(200).json({
+          message: "Data Fetched Successfully",
+          data: List,
+          status: 200
+        })
+
       } catch (error) {
-        handleAxiosError(error, "reportZQAR");
-        res.status(500).json({ error: "Failed to process POST request" });
+        res.status(500).json({
+          message: "Failed to Fetch Data"
+        })
+
       }
-    },
-    reportZQA32: async (body, res) => {
-      try {
-        console.log(
-          "Sending POST payload to reportZQA32 API:",
-          JSON.stringify(body, null, 2)
-        );
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_REPORT_ZQA32,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader(),
-            },
-          }
-        );
 
-        console.log(
-          "POST Response from reportZQA32 API:",
-          JSON.stringify(response.data, null, 2)
-        );
-        res.json(response.data);
-      } catch (error) {
-        handleAxiosError(error, "reportZQA32");
-        res.status(500).json({ error: "Failed to process POST request" });
-      }
     },
-    ZPRDID: async (body, res) => {
-      try {
-        console.log(
-          "Sending POST payload to ZPRDID API:",
-          JSON.stringify(body, null, 2)
-        );
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_ZPRDID,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader(),
-            },
-          }
-        );
 
-        console.log(
-          "POST Response from ZPRDID API:",
-          JSON.stringify(response.data, null, 2)
-        );
-        res.json(response.data);
-      } catch (error) {
-        handleAxiosError(error, "ZPRDID");
-        res.status(500).json({ error: "Failed to process POST request" });
-      }
-    },
-    typeTest: async (body, res) => {
+    deleteGlobally: async (req, res) => {
       try {
-        console.log(
-          "Sending POST payload to typeTest API:",
-          JSON.stringify(body, null, 2)
-        );
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_TYPE_TEST,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader(),
-            },
-          }
-        );
+        const { globalId, screenName } = req;
+        console.log("globalId", globalId, "typeOfTable", screenName)
+        if (!globalId || !screenName) {
+          return res.status(400).json({ message: "Missing required fields", status: 400 });
+        }
 
-        console.log(
-          "POST Response from typeTest API:",
-          JSON.stringify(response.data, null, 2)
-        );
-        res.json(response.data);
+        let deletedRecord;
+
+        switch (screenName) {
+          case "machinesensor":
+            deletedRecord = await machinesensor.findOneAndDelete({ machinesensorUniqueId: globalId });
+            break;
+          case "customer":
+            deletedRecord = await customerCreation.findOneAndDelete({ customerUniqueId: globalId });
+            break;
+
+          default:
+            return res.status(400).json({ message: "Invalid table type", status: 400 });
+        }
+        console.log("deletedRecord", deletedRecord)
+
+        if (!deletedRecord) {
+          return res.status(404).json({ message: "Record not found", status: 404 });
+        }
+
+        res.status(200).json({ message: "Record deleted successfully", status: 200 });
       } catch (error) {
-        handleAxiosError(error, "typeTest");
-        res.status(500).json({ error: "Failed to process POST request" });
+        console.error("Error in deleteGlobally:", error);
+        res.status(500).json({ message: "Deletion failed", status: 500, error: error.message });
       }
     },
 
-     Coois: async (body, res) => {
+
+
+
+
+
+
+
+
+    // sap api integration starts here 
+
+    getProductionPlanning: async (body, res) => {
       try {
         console.log(
-          "Sending POST payload to Coois API:",
+          "cooisoperation",
           JSON.stringify(body, null, 2)
         );
-        const agent = new https.Agent({ rejectUnauthorized: false }); // <-- Add this line
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_COOIS_Order_Confirmation,
+        const response = await sapAxios.post(
+          config.ThirdParty_COOISOperations,
           body,
           {
             headers: {
-              Authorization: getAuthHeader(),
-            },
-            httpsAgent: agent,
+              Authorization: getAuthHeader()
+            }
           }
         );
         console.log(
-          "POST Response from Coois API:",
+          "coois operations:",
           JSON.stringify(response.data, null, 2)
         );
         res.json(response.data);
       } catch (error) {
-        handleAxiosError(error, "Coois");
-        res.status(500).json({ error: "Failed to process POST request" });
+        handleAxiosError(error, "coois operations");
+        res.status(500).json({ error: "Failed to process Post request" });
       }
     },
-    Co11: async (body, res) => {
+    // pp
+    //  productionPlanningSave: async (req, res) => {
+    //   // console.log("newCompanyCreation ", req, res)
+    //   console.log("newCompanyCreation request received", req);
+    //   try {
+
+    //     const {productionPlanningUniqueId, productionOrderNumber,activity,productName,productDes,workCenterOrMachine,sensor,operationDes,quantity,unit,startDate,endDate,shifts,supervisorName,status,createdUser } = req;
+
+    //     // const counter = await ppcount.findOneAndUpdate(
+    //     //   { name: "productionPlanningUniqueId" },
+    //     //   { $inc: { value: 1 } },
+    //     //   { new: true, upsert: true, setDefaultsOnInsert: true }
+    //     // );
+    //     // const productionPlanningUniqueId = counter.value;
+    //     // const productionPlanningUniqueId = productionOrderNumber+activity;
+    //     console.log("productionPlanningUniqueId", productionPlanningUniqueId);
+
+    //     let createdDateAndTime = getFormattedDateTime()
+    //     const Payload = new ppSchema({
+    //       productionOrderNumber,
+    //       activity,productName,
+    //       productDes,
+    //       workCenterOrMachine,
+    //       sensor,
+    //       operationDes,
+    //       quantity,
+    //       unit,
+    //       startDate,
+    //       endDate,
+    //       shifts,
+    //       supervisorName,
+    //       status,
+    //       createdDateAndTime,
+    //       createdUser,
+    //       productionPlanningUniqueId
+    //     })
+
+    //     const storedData = await Payload.save()
+
+    //     res.status(200).json({
+    //       message: "Created Successfully",
+    //       status: 200,
+    //       data: storedData,
+    //       productionPlanningUniqueId
+    //     })
+
+    //   } catch (error) {
+    //     console.error("Error in ::", error);
+    //     res.status(500).json({
+    //       message: "Failed to Save",
+    //       status: 500,
+    //       error: error.message
+    //     })
+    //   }
+    // },
+    // productionPlanningSave: async (req, res) => {
+    //   try {
+
+    //     const items = req; // <-- receive array
+    //     console.log("req.body",req)
+    //     if (!Array.isArray(items)) {
+    //       return res.status(400).json({ message: "Input must be an array" });
+    //     }
+
+    //     let savedItems = [];
+
+    //     for (const item of items) {
+
+    //       const {
+    //         productionPlanningUniqueId,
+    //         productionOrderNumber,
+    //         activity,
+    //         productName,
+    //         productDes,
+    //         workCenterOrMachine,
+    //         sensor,
+    //         operationDes,
+    //         quantity,
+    //         unit,
+    //         startDate,
+    //         endDate,
+    //         shifts,
+    //         supervisorName,
+    //         status,
+    //         createdUser
+    //       } = item;
+
+    //       // Auto-generate date & time
+    //       const createdDateAndTime = getFormattedDateTime();
+
+    //       const Payload = new ppSchema({
+    //         productionPlanningUniqueId,
+    //         productionOrderNumber,
+    //         activity,
+    //         productName,
+    //         productDes,
+    //         workCenterOrMachine,
+    //         sensor,
+    //         operationDes,
+    //         quantity,
+    //         unit,
+    //         startDate,
+    //         endDate,
+    //         shifts,
+    //         supervisorName,
+    //         status,
+    //         createdDateAndTime,
+    //         createdUser
+    //       });
+
+    //       const storedData = await Payload.save();
+    //       savedItems.push(storedData);
+    //     }
+
+    //     res.status(200).json({
+    //       message: "Saved Successfully",
+    //       status: 200,
+    //       data: savedItems
+    //     });
+
+    //   } catch (error) {
+    //     console.error("Error in Save:", error);
+    //     res.status(500).json({
+    //       message: "Failed to Save",
+    //       status: 500,
+    //       error: error.message
+    //     });
+    //   }
+    // }
+    productionPlanningSave: async (req, res) => {
       try {
-        console.log(
-          "Sending POST payload to Co11 API:",
-          JSON.stringify(body, null, 2)
-        );
-        const agent = new https.Agent({ rejectUnauthorized: false }); // Add this line
-        const response = await axios.post(
-          config.THIRD_PARTY_API_URL_POST_CO11_Order_Confirmation_ZCO11N,
-          body,
-          {
-            headers: {
-              Authorization: getAuthHeader(),
-            },
-            httpsAgent: agent, // Add this line
+
+        const items = req.body;   // ✅ FIXED
+        console.log("req.body", req.body, req)
+
+        if (!Array.isArray(items)) {
+          return res.status(400).json({ message: "Input must be an array" });
+        }
+
+        let validationErrors = [];
+
+        for (const item of items) {
+
+          const requiredFields = [
+            "productionPlanningUniqueId",
+            "productionOrderNumber",
+            "activity",
+            "productName",
+            "productDes",
+            "workCenterOrMachine",
+            "sensor",
+            "operationDes",
+            "quantity",
+            "unit",
+            "startDate",
+            "endDate",
+            "shifts",
+            "supervisorName",
+            "createdUser"
+          ];
+
+          const missing = requiredFields.filter(field => !item[field]);
+
+          if (missing.length > 0) {
+            validationErrors.push({
+              orderNumberAndActivity: item.productionPlanningUniqueId,
+              message: `Missing fields: ${missing.join(", ")}`
+            });
           }
-        );
-        console.log(
-          "POST Response from Co11 API:",
-          JSON.stringify(response.data, null, 2)
-        );
-        res.json(response.data);
+        }
+
+        if (validationErrors.length > 0) {
+          return res.status(200).json({
+            message: "Validation Failed",
+            status: 500,
+            errors: validationErrors
+          });
+        }
+
+        let savedItems = [];
+        for (const item of items) {
+
+          const createdDateAndTime = getFormattedDateTime();
+
+          const Payload = new ppSchema({
+            ...item,
+            createdDateAndTime
+          });
+
+          const storedData = await Payload.save();
+          savedItems.push(storedData);
+        }
+
+        res.status(200).json({
+          message: "Saved Successfully",
+          status: 200,
+          data: savedItems
+        });
+
       } catch (error) {
-        handleAxiosError(error, "Co11");
-        res.status(500).json({ error: "Failed to process POST request" });
+        console.error("Error in Save:", error);
+
+        if (error.code === 11000) {
+          return res.status(409).json({
+            message: "Duplicate Entry Error",
+            status: 409,
+            error: `Duplicate value for: ${JSON.stringify(error.keyValue)}`
+          });
+        }
+
+        res.status(500).json({
+          message: "Failed to Save",
+          status: 500,
+          error: error.message
+        });
       }
-    },
-  };
+    }
+
+
+
+  }
+
+
+
+
 })();

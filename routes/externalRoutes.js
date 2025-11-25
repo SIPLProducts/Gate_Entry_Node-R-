@@ -3,20 +3,19 @@ module.exports = (() => {
   const router = express.Router();
   const externalApiHandler = require("../handlers/externalApiHandler");
 
-  // Define routes
-  router.post("/Login", externalApiHandler.Login);
+  
+  router.get('/Iot_Fetch_Data/MotorsLogs',externalApiHandler.getMotorsLogsData);
 
-  //UCL
-  router.put("/getLotReports", externalApiHandler.getLotReports);
 
-  router.post("/resultrecord", externalApiHandler.updateResultRecording);
-  router.post("/UDsubmitResult", externalApiHandler.UDsubmitResult);
-  router.post("/reportZQAR", externalApiHandler.reportZQAR); //quality reports
-  router.post("/reportZQA32", externalApiHandler.reportZQA32); //pending lot reports
-  router.post("/ZPRDID", externalApiHandler.ZPRDID);
-  router.post("/typeTest", externalApiHandler.typeTest);
+router.post('/Smart_Factory/SaveMachineSensor',externalApiHandler.machineSensor);
+router.post('/Smart_Factory/MachineSensorUpdate',externalApiHandler.machineSensorupdate);
+router.get('/Smart_Factory/MachineSensList',externalApiHandler.machinesensorlist);
+router.post('/Smart_Factory/Global_Delete',externalApiHandler.globalDelete);
 
-  router.post('/orderconfirmation/coois',externalApiHandler.Coois);
-  router.post('/orderconfirmationzco11n/co11',externalApiHandler.Co11);
+// sap api integration api 
+router.post('/SAP_API/COOIS_Operation',externalApiHandler.cooisOperation);
+
+router.post('/Smart_Factory/SaveProductionPlanning',externalApiHandler.ppSave);
+
   return router;
 })();

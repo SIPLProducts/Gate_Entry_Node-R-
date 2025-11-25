@@ -6,27 +6,26 @@ const connectDB = require('./config/db');
 // Initialize App
 const app = express();
 
-// Middleware
-// app.use(cors());
-// for deve server
+// CORS
 app.use(cors({
-    origin: '*', // Adjust the origin to your frontend's URL
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
 }));
-app.use(express.json());
 
-// Load Routes
+// ---- BODY PARSER (ONLY ONCE) ----
+app.use(express.json({ limit: "50mb", strict: false }));
+app.use(express.urlencoded({ extended: true }));
+
+// ---- ROUTES MUST COME AFTER BODY PARSER ----
 app.use('/api', routes);
 
 // Database Connection
-// connectDB();
+connectDB();
 
 // Server Initialization
-// const PORT = process.env.PORT || 3000;
 const BASE_SERVER_URL = 'http://localhost'
-const BASE_PORT = 3000
-app.listen(BASE_PORT, () => 
-    // console.log(`Server running on port ${PORT}`)
- console.log(`🚀 Server running on ${BASE_SERVER_URL}:${BASE_PORT}`)
+const BASE_PORT = 3001
+app.listen(BASE_PORT, () =>
+    console.log(`🚀 Server running on ${BASE_SERVER_URL}:${BASE_PORT}`)
 );

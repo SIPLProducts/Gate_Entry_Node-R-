@@ -1,25 +1,16 @@
-const reportsMethods = require("../apiMethods/reportsMethods");
 
 module.exports = (() => {
   const externalApiMethods = require("../apiMethods/externalApiMethods");
-  const zprApiMethods = require("../apiMethods/zprMethods");
-  const qrCodeMethods = require("../apiMethods/qrCodeMethods");
+
 
   return {
-    Login: (req, res) => externalApiMethods.Login(req.body, res),
+    getMotorsLogsData: (req, res) => externalApiMethods.getMotorsLogsData(req.body, res),
+    machineSensor: (req, res) => externalApiMethods.machinesensorSave(req.body, res),
+   machineSensorupdate: (req, res) => externalApiMethods.machinesensorUpdate(req.body, res),
+      machinesensorlist: (req, res) => externalApiMethods.machinesensorList(req.body, res),
+      globalDelete: (req, res) => externalApiMethods.deleteGlobally(req.body, res),
+      cooisOperation: (req, res) => externalApiMethods.getProductionPlanning(req.body, res),
 
-    getLotReports: (req, res) =>
-      externalApiMethods.getLotReports(req.body, res),
-    updateResultRecording: (req, res) =>
-      externalApiMethods.updateResultRecording(req.body, res),
-    UDsubmitResult: (req, res) =>
-      externalApiMethods.UDsubmitResult(req.body, res),
-    reportZQAR: (req, res) => externalApiMethods.reportZQAR(req.body, res),
-    reportZQA32: (req, res) => externalApiMethods.reportZQA32(req.body, res),
-    ZPRDID: (req, res) => externalApiMethods.ZPRDID(req.body, res),
-    typeTest: (req, res) => externalApiMethods.typeTest(req.body, res),
-
-      Coois:(req, res) => externalApiMethods.Coois(req.body, res),
-    Co11:(req, res) => externalApiMethods.Co11(req.body, res),
+ppSave: (req, res) => externalApiMethods.productionPlanningSave(req, res),
   };
 })();

@@ -1,18 +1,18 @@
-module.exports = (() => {
-    const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
-    const connectDB = async () => {
-        try {
-            await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/myapp', {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-            });
-            console.log('Database connected successfully');
-        } catch (error) {
-            console.error('Database connection error:', error);
-            process.exit(1);
-        }
-    };
+const uri = "mongodb+srv://paramesh:do7zSGvCunwKJORR@cluster0.e4oz0ms.mongodb.net/Smart_Factory";
+// const uri = "mongodb://SharviDb:Sharvi%401234@192.168.1.4:27017/Invoice?authSource=admin&ssl=false";
 
-    return connectDB;
-})();
+const connectDB = async () => {
+    try {
+        await mongoose.connect(uri, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        console.log("Database Connected successfully");
+    } catch (err) {
+        console.error("Database connection error:", err);
+    }
+};
+
+module.exports = connectDB;
