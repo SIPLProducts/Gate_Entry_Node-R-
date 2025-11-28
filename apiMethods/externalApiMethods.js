@@ -1,4 +1,4 @@
-const { machinesensor, machinesensorcount, ppSchema, ppcount } = require('../models/userCreationModel');
+const { machinesensor, machinesensorcount, ppSchema, ppcount,userCount,userCreation } = require('../models/userCreationModel');
 
 
 function getFormattedDateTime() {
@@ -63,31 +63,34 @@ module.exports = (() => {
   return {
     getMotorsLogsData: async (req, res) => {
       try {
-        const data = await firebaseService.getMotorLogs();
+        const motorlogsData = await firebaseService.getMotorLogs();
+        const sensorData = await firebaseService.getSensorData();
+        console.log("motorlogsData", motorlogsData, "sensorData", sensorData)
 
-        if (!data || data.length === 0) {
+        if (!motorlogsData || motorlogsData.length === 0) {
           return res.status(200).json({
             message: "No Data Available",
-            data: [],
+            motorlogsData: [],
+            sensorData: sensorData || [],
             status: 200
-          })
-
+          });
         }
 
         res.status(200).json({
           message: "Data Fetched Successfully",
-          data: data,
+          motorlogsData: motorlogsData,
+          sensorData: sensorData || [],
           status: 200
-        })
+        });
 
       } catch (error) {
         res.status(500).json({
-          message: "Failed to Fetch Data"
-        })
-
+          message: "Failed to Fetch Data",
+          error: error.message
+        });
       }
-
     },
+
 
     machinesensorSave: async (req, res) => {
       // console.log("newCompanyCreation ", req, res)
@@ -486,10 +489,264 @@ module.exports = (() => {
           error: error.message
         });
       }
-    }
+    },
+    getListOfPP: async (body, res) => {
+      try {
+        const List = await ppSchema.find()
+
+        if (!List || List.length === 0) {
+          return res.status(200).json({
+            message: "No Data Available",
+            List: [],
+            status: 200
+          })
+
+        }
+
+        res.status(200).json({
+          message: "Data Fetched Successfully",
+          data: List,
+          status: 200
+        })
+
+      } catch (error) {
+        res.status(500).json({
+          message: "Failed to Fetch Data"
+        })
+
+      }
+    },
+
+    userCreationSave: async (req, res) => {
+      console.log("userCreationSave", req, res)
+      try {
+        console.log("req.body", req.body);
+        const { userName, userFirstName, userLastName, userEmail, userContact, userPassword, userConfirmPassword, userStatus, userActivity } = req.body;
+        console.log("userPassword", userPassword, "userConfirmPassword", userConfirmPassword);
+
+        if (userPassword !== userConfirmPassword) {
+          return res.status(400).json({ message: "Passwords do not match", status: 400 });
+        }
+
+        const existingUser = await userCreation.findOne({ userEmail });
+        if (existingUser) {
+          return res.status(400).json({ message: "User with this email already exists", status: 400 });
+        }
+
+        const counter = await userCount.findOneAndUpdate(
+          { name: "userUniqueId" },
+          { $inc: { value: 1 } },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+        const userUniqueId = counter.value;
+        console.log("userUniqueId", userUniqueId);
+
+        // Do NOT hash the password, save it as plain text
+        const userPayload = new userCreation({
+          userName,
+          userFirstName,
+          userLastName,
+          userEmail,
+          userContact,
+          userPassword, // Store plain text password
+          userConfirmPassword, // Store plain text confirm password (you might not need to save this)
+          userStatus,
+          userActivity,
+          userUniqueId
+        });
+
+        const saveNewUser = await userPayload.save();
+        res.status(201).json({
+          message: "User Created Successfully",
+          data: {
+            userName: saveNewUser.userName,
+            userStatus: saveNewUser.userStatus,
+            userActivity: saveNewUser.userActivity,
+            userUniqueId: saveNewUser.userUniqueId
+          },
+          status: 201
+        });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to save the user", status: 500, error: error.message });
+      }
+    },
+
+    updateUserCreation: async (req, res) => {
+      try {
+        const { UniqueId } = req.params;
+        const updateUserData = req.body;
+
+        // If the password is being updated, keep it as plain text (no hashing)
+        if (updateUserData.userPassword) {
+          updateUserData.userPassword = updateUserData.userPassword; // Don't hash the password
+        }
+
+        const updateUserObj = await userCreation.findOneAndUpdate(
+          { userUniqueId: UniqueId },
+          { $set: updateUserData },
+          { new: true, runValidators: true }
+        );
+
+        if (!updateUserObj) {
+          return res.status(404).json({ message: "User Not Found", status: 404 });
+        }
+
+        res.status(200).json({ message: "User Updated Successfully", data: updateUserObj, status: 200 });
+      } catch (error) {
+        res.status(500).json({ message: "Update Failed", status: 500, error: error.message });
+      }
+    },
+    getAllUserLists: async (req, res) => {
+      try {
+        const usersList = await userCreation.find()
+        console.log("usersList", usersList)
+        if (usersList.length === 0) {
+          res.json({
+            message: "No Data Available",
+            status: 200
+          })
+        }
+        res.json({
+          message: "User Data Fetched Successfully",
+          data: usersList,
+          status: 200
+        })
+
+      } catch (error) {
+
+        res.json({
+          error: error.message
+        })
+      }
+    },
+    userLogin: async (req, res) => {
+      try {
+        const { userName, userPassword } = req.body; // Get username and password
+        console.log("userName", userName, userPassword);
+
+        const user = await userCreation.findOne({ userName }); // Find user by username
+        console.log("user", user)
+        if (!user) {
+          return res.status(404).json({
+            message: "User Not Found. Please enter a valid User",
+            status: 404,
+            isValid: false
+          });
+        }
+        let obj = {
+          userName: user.userName,
+          userFirstName: user.userFirstName,
+          userLastName: user.userLastName,
+          userEmail: user.userEmail,
+          userUniqueId: user.userUniqueId,
+          userStatus: user.userStatus,
+          isValid: user.userStatus,
+          userActivity: user.userActivity
+        }
+        console.log("password", userPassword, "user.userPassword", user.userPassword);
+        if (user.userStatus == false) {
+          return res.status(200).json({
+            message: "User Not In Active",
+            status: 200,
+            data: obj,
+          });
+        }
+        // Compare plain password directly
+        if (userPassword !== user.userPassword) {
+          return res.status(400).json({
+            message: "Invalid Credentials",
+            status: 400,
+            isValid: false
+          });
+        }
+
+        // const token = jwt.sign(
+        //   { id: user._id, userName: user.userName }, // JWT payload with username
+        //   process.env.JWT_SECRET || "your_jwt_secret",
+        //   { expiresIn: "1h" }
+        // );
 
 
 
+        res.status(200).json({
+          message: "Login Successful",
+          status: 200,
+          data: obj,
+          // token
+        });
+      } catch (error) {
+        res.status(500).json({ message: "Server Error", status: 500, isValid: false, error: error.message });
+      }
+    },
+    resetPassword: async (req, res) => {
+      console.log("resetPassword req.body", req.body)
+      try {
+        const { userUniqueId, userName, currentPassword, newPassword, confirmPassword } = req.body;
+
+        // Check if user exists
+        const user = await userCreation.findOne({ userName });
+        if (!user) {
+          return res.status(404).json({ message: "User not found", status: 404 });
+        }
+
+        // Verify current password (since no hashing, we do a direct comparison)
+        if (user.userPassword !== currentPassword) {
+          return res.status(400).json({ message: "Current password is incorrect", status: 400 });
+        }
+
+        // Check if new password and confirm password match
+        if (newPassword !== confirmPassword) {
+          return res.status(400).json({ message: "Please check New password and confirm password", status: 400 });
+        }
+
+        // Update password in database
+        user.userPassword = newPassword;
+        user.userConfirmPassword = confirmPassword;
+        await user.save();
+
+        res.status(200).json({ message: "Password reset successfully", status: 200 });
+
+      } catch (error) {
+        res.status(500).json({ message: "Failed to reset password", status: 500, error: error.message });
+      }
+    },
+    forgotPassword: async (req, res) => {
+
+      console.log("forgotPassword", req.res)
+      try {
+        const { userEmail } = req.body;
+        console.log("userEmail", userEmail)
+        if (!userEmail) {
+          return res.status(400).json({ message: "Email is required" });
+        }
+        const user = await userCreation.findOne({ userEmail: userEmail });
+        console.log("user", user)
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        let obj = {
+          userUniqueId: user.userUniqueId,
+          userEmail: user.userEmail,
+          userName: user.userName,
+          userPassword: user.userPassword,
+        }
+
+        res.status(200).json({
+          message: "Password reset email sent successfully",
+          status: 200,
+          data: obj
+        })
+        enterIntoSendMail(obj)
+      }
+      catch (error) {
+        res.status(500).json({
+          message: "500 Internal Server Error",
+          status: 500
+        })
+      }
+
+    },
   }
 
 

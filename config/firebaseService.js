@@ -25,7 +25,19 @@ async function getMotorLogs() {
     throw new Error("Failed to fetch motorlogs from Firebase");
   }
 }
+async function getSensorData() {
+  const sensorsRef = db.ref('sensor'); // 'motorlogs' is the path from your image
+  
+  try {
+    const snapshot = await sensorsRef.once('value');
+    // .val() converts the snapshot into a JavaScript object/array
+    return snapshot.val(); 
+  } catch (error) {
+    console.error("Error fetching motorlogs data:", error);
+    throw new Error("Failed to fetch motorlogs from Firebase");
+  }
+}
 
 module.exports = {
-  getMotorLogs
+  getMotorLogs,getSensorData
 };
