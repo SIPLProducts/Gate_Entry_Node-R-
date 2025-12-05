@@ -402,94 +402,213 @@ module.exports = (() => {
     //     });
     //   }
     // }
-    productionPlanningSave: async (req, res) => {
-      try {
+    // baclup on 04-12-2025 by sunil
+    // productionPlanningSave: async (req, res) => {
+    //   try {
 
-        const items = req.body;   // ✅ FIXED
-        console.log("req.body", req.body, req)
+    //     const items = req.body;   // ✅ FIXED
+    //     console.log("req.body", req.body, req)
+
+    //     if (!Array.isArray(items)) {
+    //       return res.status(400).json({ message: "Input must be an array" });
+    //     }
+
+    //     let validationErrors = [];
+
+    //     for (const item of items) {
+
+    //       const requiredFields = [
+    //         "productionPlanningUniqueId",
+    //         "productionOrderNumber",
+    //         "activity",
+    //         "productName",
+    //         "productDes",
+    //         "workCenterOrMachine",
+    //         "sensor",
+    //         "operationDes",
+    //         "quantity",
+    //         "unit",
+    //         "startDate",
+    //         "endDate",
+    //         "shifts",
+    //         "supervisorName",
+    //         "createdUser"
+    //       ];
+
+    //       const missing = requiredFields.filter(field => !item[field]);
+
+    //       if (missing.length > 0) {
+    //         validationErrors.push({
+    //           orderNumberAndActivity: item.productionPlanningUniqueId,
+    //           message: `Missing fields: ${missing.join(", ")}`
+    //         });
+    //       }
+    //     }
+
+    //     if (validationErrors.length > 0) {
+    //       return res.status(200).json({
+    //         message: "Validation Failed",
+    //         status: 500,
+    //         errors: validationErrors
+    //       });
+    //     }
+
+    //     let savedItems = [];
+    //     for (const item of items) {
+
+    //       const createdDateAndTime = getFormattedDateTime();
+
+    //       const Payload = new ppSchema({
+    //         ...item,
+    //         createdDateAndTime
+    //       });
+
+    //       const storedData = await Payload.save();
+    //       savedItems.push(storedData);
+    //     }
+
+    //     res.status(200).json({
+    //       message: "Saved Successfully",
+    //       status: 200,
+    //       data: savedItems
+    //     });
+
+    //   } catch (error) {
+    //     console.error("Error in Save:", error);
+
+    //     if (error.code === 11000) {
+    //       return res.status(409).json({
+    //         message: "Duplicate Entry Error",
+    //         status: 409,
+    //         error: `Duplicate value for: ${JSON.stringify(error.keyValue)}`
+    //       });
+    //     }
+
+    //     res.status(500).json({
+    //       message: "Failed to Save",
+    //       status: 500,
+    //       error: error.message
+    //     });
+    //   }
+    // },
+    productionPlanningSave: async (req, res) => {
+    try {
+        const items = req.body; 
+        console.log("items",items)
+        // console.log("req.body", req.body, req); // ❌ Remove or comment out this line to avoid logging large objects
 
         if (!Array.isArray(items)) {
-          return res.status(400).json({ message: "Input must be an array" });
+            return res.status(400).json({ message: "Input must be an array" });
         }
 
         let validationErrors = [];
-
-        for (const item of items) {
-
-          const requiredFields = [
-            "productionPlanningUniqueId",
-            "productionOrderNumber",
-            "activity",
-            "productName",
-            "productDes",
-            "workCenterOrMachine",
-            "sensor",
-            "operationDes",
-            "quantity",
-            "unit",
-            "startDate",
-            "endDate",
-            "shifts",
-            "supervisorName",
-            "createdUser"
-          ];
-
-          const missing = requiredFields.filter(field => !item[field]);
-
-          if (missing.length > 0) {
-            validationErrors.push({
-              orderNumberAndActivity: item.productionPlanningUniqueId,
-              message: `Missing fields: ${missing.join(", ")}`
-            });
-          }
-        }
-
-        if (validationErrors.length > 0) {
-          return res.status(200).json({
-            message: "Validation Failed",
-            status: 500,
-            errors: validationErrors
-          });
-        }
-
+        let duplicateErrors = [];
         let savedItems = [];
+
+        // 1. Initial Validation Pass
+        const requiredFields = [
+            "productionPlanningUniqueId", "productionOrderNumber", "activity", "productName", 
+            "productDes", "workCenterOrMachine", "sensor", "operationDes", "quantity", 
+            "unit", "startDate", "endDate", "shifts", "supervisorName", "createdUser"
+        ];
+
         for (const item of items) {
+            const missing = requiredFields.filter(field => !item[field]);
 
-          const createdDateAndTime = getFormattedDateTime();
+            if (missing.length > 0) {
+                validationErrors.push({
+                    orderNumberAndActivity: item.productionPlanningUniqueId,
+                    message: `Missing fields: ${missing.join(", ")}`
+                });
+            }
+        }
+       console.log("validationErrors",validationErrors)
+        if (validationErrors.length > 0) {
+            return res.status(200).json({
+                message: "Validation Failed",
+                status: 500,
+                errors: validationErrors
+            });
+        }
+        
+        // 2. Duplicate Check and Saving Pass
+        for (const item of items) {
+            const { sensor, startDate, shifts } = item;
 
-          const Payload = new ppSchema({
-            ...item,
-            createdDateAndTime
-          });
+            // --- DUPLICATE CHECK LOGIC ---
+            const existingPlan = await ppSchema.findOne({
+                sensor: sensor,
+                startDate: startDate,
+                shifts: shifts
+            });
+            console.log("existingPlan",existingPlan)
+          console.log("duplicateErrors",duplicateErrors)
+            if (existingPlan) {
+                duplicateErrors.push({
+                    itemKey: `${sensor} | ${startDate} | ${shifts}`,
+                    message: "A record with this Sensor, Start Date, and Shift already exists."
+                });
+                continue; // Skip saving this item and move to the next one
+            }
+            // -----------------------------
 
-          const storedData = await Payload.save();
-          savedItems.push(storedData);
+            // If no duplicate found, proceed to save
+            const createdDateAndTime = getFormattedDateTime();
+            const counter = await ppcount.findOneAndUpdate(
+          { name: "originUniqueId" },
+          { $inc: { value: 1 } },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+        const originUniqueId = counter.value;
+        console.log("originUniqueId", originUniqueId);
+
+            const Payload = new ppSchema({
+                ...item,
+                originUniqueId,
+                createdDateAndTime
+            });
+
+            const storedData = await Payload.save();
+            savedItems.push(storedData);
+        }
+        console.log('savedItems',savedItems)
+        // 3. Final Response
+        if (duplicateErrors.length > 0) {
+            // If some items failed due to duplication, return a partial success/failure message
+            return res.status(200).json({
+                message: savedItems.length > 0 
+                    ? `Partially Saved. ${savedItems.length} items saved. ${duplicateErrors.length} items skipped due to duplication.`
+                    : "Failed to Save any items due to duplication.",
+                status: savedItems.length > 0 ? 202 : 409, // 202 Accepted for partial success, 409 Conflict otherwise
+                savedData: savedItems,
+                duplicateErrors: duplicateErrors
+            });
         }
 
         res.status(200).json({
-          message: "Saved Successfully",
-          status: 200,
-          data: savedItems
+            message: "Saved Successfully",
+            status: 200,
+            data: savedItems
         });
 
-      } catch (error) {
+    } catch (error) {
         console.error("Error in Save:", error);
 
         if (error.code === 11000) {
-          return res.status(409).json({
-            message: "Duplicate Entry Error",
-            status: 409,
-            error: `Duplicate value for: ${JSON.stringify(error.keyValue)}`
-          });
+            return res.status(409).json({
+                message: "Duplicate Entry Error",
+                status: 409,
+                error: `Duplicate value for: ${JSON.stringify(error.keyValue)}`
+            });
         }
 
         res.status(500).json({
-          message: "Failed to Save",
-          status: 500,
-          error: error.message
+            message: "Failed to Save",
+            status: 500,
+            error: error.message
         });
-      }
-    },
+    }
+},
     getListOfPP: async (body, res) => {
       try {
         const List = await ppSchema.find()

@@ -43,11 +43,16 @@ const productionPlaningCountSchema = new mongoose.Schema({
     },
 });
 const productionPlanningSchema = new mongoose.Schema({
+
+    originUniqueId:{
+        type: Number,
+        required: true,
+        unique: true
+    },
     
     productionPlanningUniqueId: {
         type: Number,
         required: true,
-        unique: true
     },
     productionOrderNumber: {
         type: Number,
