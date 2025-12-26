@@ -1,4 +1,4 @@
-const { machinesensor, machinesensorcount, ppSchema, ppcount,userCount,userCreation } = require('../models/userCreationModel');
+const { machinesensor, machinesensorcount, ppSchema, ppcount, userCount, userCreation } = require('../models/userCreationModel');
 
 
 function getFormattedDateTime() {
@@ -21,32 +21,24 @@ function getFormattedDateTime() {
 module.exports = (() => {
   const express = require('express');
   const router = express.Router();
-  const firebaseService = require('../config/firebaseService');
   const axios = require("axios");
   const https = require("https");
   const config = require("../config/apiConfig");
   // Allow SAP self-signed SSL
   const sapAxios = axios.create({
-    httpsAgent: new https.Agent({
-      rejectUnauthorized: false
-    })
+    timeout: 30000
   });
   const handleAxiosError = (error, functionName) => {
-    console.error(`Error in ${functionName}:`, error.message);
+    console.error(`❌ Error in ${functionName}`);
 
-    // Log detailed error information if available
     if (error.response) {
-      console.error("Response data:", error.response.data);
-      console.error("Response status:", error.response.status);
-      console.error("Response headers:", error.response.headers);
+      console.error("STATUS:", error.response.status);
+      console.error("DATA:", error.response.data);
     } else if (error.request) {
-      console.error("Request made but no response received:", error.request);
+      console.error("REQUEST SENT, NO RESPONSE FROM SAP");
     } else {
-      console.error("Error details:", error.message);
+      console.error("MESSAGE:", error.message);
     }
-
-    // Return an error object to send a consistent response
-    return { error: `Error processing your request in ${functionName}` };
   };
 
 
@@ -61,35 +53,7 @@ module.exports = (() => {
     return `Basic ${token}`;
   };
   return {
-    getMotorsLogsData: async (req, res) => {
-      try {
-        const motorlogsData = await firebaseService.getMotorLogs();
-        const sensorData = await firebaseService.getSensorData();
-        console.log("motorlogsData", motorlogsData, "sensorData", sensorData)
 
-        if (!motorlogsData || motorlogsData.length === 0) {
-          return res.status(200).json({
-            message: "No Data Available",
-            motorlogsData: [],
-            sensorData: sensorData || [],
-            status: 200
-          });
-        }
-
-        res.status(200).json({
-          message: "Data Fetched Successfully",
-          motorlogsData: motorlogsData,
-          sensorData: sensorData || [],
-          status: 200
-        });
-
-      } catch (error) {
-        res.status(500).json({
-          message: "Failed to Fetch Data",
-          error: error.message
-        });
-      }
-    },
 
 
     machinesensorSave: async (req, res) => {
@@ -273,232 +237,120 @@ module.exports = (() => {
         res.status(500).json({ error: "Failed to process Post request" });
       }
     },
-    // pp
-    //  productionPlanningSave: async (req, res) => {
-    //   // console.log("newCompanyCreation ", req, res)
-    //   console.log("newCompanyCreation request received", req);
-    //   try {
+    fetchGateEntryPdf: async (body, res) => {
+      try {
+        const response = await sapAxios.post(
+          config.ThirdParty_Fetch_Gate_Entry_Pdf,
+          body,
+          {
+            headers: {
+              Authorization: getAuthHeader()
+            }
+          }
+        );
 
-    //     const {productionPlanningUniqueId, productionOrderNumber,activity,productName,productDes,workCenterOrMachine,sensor,operationDes,quantity,unit,startDate,endDate,shifts,supervisorName,status,createdUser } = req;
+        // ✅ SAP returns Base64 PDF string
+        res.json({
+          pdfBase64: response.data
+        });
 
-    //     // const counter = await ppcount.findOneAndUpdate(
-    //     //   { name: "productionPlanningUniqueId" },
-    //     //   { $inc: { value: 1 } },
-    //     //   { new: true, upsert: true, setDefaultsOnInsert: true }
-    //     // );
-    //     // const productionPlanningUniqueId = counter.value;
-    //     // const productionPlanningUniqueId = productionOrderNumber+activity;
-    //     console.log("productionPlanningUniqueId", productionPlanningUniqueId);
+      } catch (error) {
+        handleAxiosError(error, "failed Gate Entry Pdf");
 
-    //     let createdDateAndTime = getFormattedDateTime()
-    //     const Payload = new ppSchema({
-    //       productionOrderNumber,
-    //       activity,productName,
-    //       productDes,
-    //       workCenterOrMachine,
-    //       sensor,
-    //       operationDes,
-    //       quantity,
-    //       unit,
-    //       startDate,
-    //       endDate,
-    //       shifts,
-    //       supervisorName,
-    //       status,
-    //       createdDateAndTime,
-    //       createdUser,
-    //       productionPlanningUniqueId
-    //     })
+        res.status(500).json({
+          error: "Failed to fetch Gate Entry PDF"
+        });
+      }
+    },
 
-    //     const storedData = await Payload.save()
+    GateEntryCreation: async (body, res) => {
+      try {
+        console.log(
+          "gec",
+          JSON.stringify(body, null, 2)
+        );
+        const response = await sapAxios.post(
+          config.ThirdParty_Fetch_Gate_Entry_Creation,
+          body,
+          {
+            headers: {
+              Authorization: getAuthHeader()
+            }
+          }
+        );
+        console.log(
+          "coois operations:",
+          JSON.stringify(response.data, null, 2)
+        );
+        res.json(response.data);
+      } catch (error) {
+        handleAxiosError(error, "Gate Entry Creation");
+        res.status(500).json({ error: "Gate Entry Creation" });
+      }
+    },
+    GateEntryChange: async (body, res) => {
+      try {
+        console.log(
+          "gec",
+          JSON.stringify(body, null, 2)
+        );
+        const response = await sapAxios.post(
+          config.ThirdParty_Fetch_Gate_Entry_Creation,
+          body,
+          {
+            headers: {
+              Authorization: getAuthHeader()
+            }
+          }
+        );
+        console.log(
+          "coois operations:",
+          JSON.stringify(response.data, null, 2)
+        );
+        res.json(response.data);
+      } catch (error) {
+        handleAxiosError(error, "Gate Entry Creation");
+        res.status(500).json({ error: "Gate Entry Creation" });
+      }
+    },
+    fetchGateEntryChange: async (body, res) => {
+      try {
+        console.log(
+          "GE F",
+          JSON.stringify(body, null, 2)
+        );
+        const response = await sapAxios.post(
+          config.ThirdParty_Fetch_Gate_Entry_fetchChange,
+          body,
+          {
+            headers: {
+              Authorization: getAuthHeader()
+            }
+          }
+        );
+        console.log(
+          "fetch GE",
+          JSON.stringify(response.data, null, 2)
+        );
+        res.json(response.data);
+      } catch (error) {
+        handleAxiosError(error, "fetch change Gate Entry");
+        res.status(500).json({ error: "fetch change Gate Entry" });
+      }
+    },
 
-    //     res.status(200).json({
-    //       message: "Created Successfully",
-    //       status: 200,
-    //       data: storedData,
-    //       productionPlanningUniqueId
-    //     })
 
-    //   } catch (error) {
-    //     console.error("Error in ::", error);
-    //     res.status(500).json({
-    //       message: "Failed to Save",
-    //       status: 500,
-    //       error: error.message
-    //     })
-    //   }
-    // },
-    // productionPlanningSave: async (req, res) => {
-    //   try {
 
-    //     const items = req; // <-- receive array
-    //     console.log("req.body",req)
-    //     if (!Array.isArray(items)) {
-    //       return res.status(400).json({ message: "Input must be an array" });
-    //     }
 
-    //     let savedItems = [];
 
-    //     for (const item of items) {
-
-    //       const {
-    //         productionPlanningUniqueId,
-    //         productionOrderNumber,
-    //         activity,
-    //         productName,
-    //         productDes,
-    //         workCenterOrMachine,
-    //         sensor,
-    //         operationDes,
-    //         quantity,
-    //         unit,
-    //         startDate,
-    //         endDate,
-    //         shifts,
-    //         supervisorName,
-    //         status,
-    //         createdUser
-    //       } = item;
-
-    //       // Auto-generate date & time
-    //       const createdDateAndTime = getFormattedDateTime();
-
-    //       const Payload = new ppSchema({
-    //         productionPlanningUniqueId,
-    //         productionOrderNumber,
-    //         activity,
-    //         productName,
-    //         productDes,
-    //         workCenterOrMachine,
-    //         sensor,
-    //         operationDes,
-    //         quantity,
-    //         unit,
-    //         startDate,
-    //         endDate,
-    //         shifts,
-    //         supervisorName,
-    //         status,
-    //         createdDateAndTime,
-    //         createdUser
-    //       });
-
-    //       const storedData = await Payload.save();
-    //       savedItems.push(storedData);
-    //     }
-
-    //     res.status(200).json({
-    //       message: "Saved Successfully",
-    //       status: 200,
-    //       data: savedItems
-    //     });
-
-    //   } catch (error) {
-    //     console.error("Error in Save:", error);
-    //     res.status(500).json({
-    //       message: "Failed to Save",
-    //       status: 500,
-    //       error: error.message
-    //     });
-    //   }
-    // }
-    // baclup on 04-12-2025 by sunil
-    // productionPlanningSave: async (req, res) => {
-    //   try {
-
-    //     const items = req.body;   // ✅ FIXED
-    //     console.log("req.body", req.body, req)
-
-    //     if (!Array.isArray(items)) {
-    //       return res.status(400).json({ message: "Input must be an array" });
-    //     }
-
-    //     let validationErrors = [];
-
-    //     for (const item of items) {
-
-    //       const requiredFields = [
-    //         "productionPlanningUniqueId",
-    //         "productionOrderNumber",
-    //         "activity",
-    //         "productName",
-    //         "productDes",
-    //         "workCenterOrMachine",
-    //         "sensor",
-    //         "operationDes",
-    //         "quantity",
-    //         "unit",
-    //         "startDate",
-    //         "endDate",
-    //         "shifts",
-    //         "supervisorName",
-    //         "createdUser"
-    //       ];
-
-    //       const missing = requiredFields.filter(field => !item[field]);
-
-    //       if (missing.length > 0) {
-    //         validationErrors.push({
-    //           orderNumberAndActivity: item.productionPlanningUniqueId,
-    //           message: `Missing fields: ${missing.join(", ")}`
-    //         });
-    //       }
-    //     }
-
-    //     if (validationErrors.length > 0) {
-    //       return res.status(200).json({
-    //         message: "Validation Failed",
-    //         status: 500,
-    //         errors: validationErrors
-    //       });
-    //     }
-
-    //     let savedItems = [];
-    //     for (const item of items) {
-
-    //       const createdDateAndTime = getFormattedDateTime();
-
-    //       const Payload = new ppSchema({
-    //         ...item,
-    //         createdDateAndTime
-    //       });
-
-    //       const storedData = await Payload.save();
-    //       savedItems.push(storedData);
-    //     }
-
-    //     res.status(200).json({
-    //       message: "Saved Successfully",
-    //       status: 200,
-    //       data: savedItems
-    //     });
-
-    //   } catch (error) {
-    //     console.error("Error in Save:", error);
-
-    //     if (error.code === 11000) {
-    //       return res.status(409).json({
-    //         message: "Duplicate Entry Error",
-    //         status: 409,
-    //         error: `Duplicate value for: ${JSON.stringify(error.keyValue)}`
-    //       });
-    //     }
-
-    //     res.status(500).json({
-    //       message: "Failed to Save",
-    //       status: 500,
-    //       error: error.message
-    //     });
-    //   }
-    // },
     productionPlanningSave: async (req, res) => {
-    try {
-        const items = req.body; 
-        console.log("items",items)
+      try {
+        const items = req.body;
+        console.log("items", items)
         // console.log("req.body", req.body, req); // ❌ Remove or comment out this line to avoid logging large objects
 
         if (!Array.isArray(items)) {
-            return res.status(400).json({ message: "Input must be an array" });
+          return res.status(400).json({ message: "Input must be an array" });
         }
 
         let validationErrors = [];
@@ -507,108 +359,108 @@ module.exports = (() => {
 
         // 1. Initial Validation Pass
         const requiredFields = [
-            "productionPlanningUniqueId", "productionOrderNumber", "activity", "productName", 
-            "productDes", "workCenterOrMachine", "sensor", "operationDes", "quantity", 
-            "unit", "startDate", "endDate", "shifts", "supervisorName", "createdUser"
+          "productionPlanningUniqueId", "productionOrderNumber", "activity", "productName",
+          "productDes", "workCenterOrMachine", "sensor", "operationDes", "quantity",
+          "unit", "startDate", "endDate", "shifts", "supervisorName", "createdUser"
         ];
 
         for (const item of items) {
-            const missing = requiredFields.filter(field => !item[field]);
+          const missing = requiredFields.filter(field => !item[field]);
 
-            if (missing.length > 0) {
-                validationErrors.push({
-                    orderNumberAndActivity: item.productionPlanningUniqueId,
-                    message: `Missing fields: ${missing.join(", ")}`
-                });
-            }
-        }
-       console.log("validationErrors",validationErrors)
-        if (validationErrors.length > 0) {
-            return res.status(200).json({
-                message: "Validation Failed",
-                status: 500,
-                errors: validationErrors
+          if (missing.length > 0) {
+            validationErrors.push({
+              orderNumberAndActivity: item.productionPlanningUniqueId,
+              message: `Missing fields: ${missing.join(", ")}`
             });
+          }
         }
-        
+        console.log("validationErrors", validationErrors)
+        if (validationErrors.length > 0) {
+          return res.status(200).json({
+            message: "Validation Failed",
+            status: 500,
+            errors: validationErrors
+          });
+        }
+
         // 2. Duplicate Check and Saving Pass
         for (const item of items) {
-            const { sensor, startDate, shifts } = item;
+          const { sensor, startDate, shifts } = item;
 
-            // --- DUPLICATE CHECK LOGIC ---
-            const existingPlan = await ppSchema.findOne({
-                sensor: sensor,
-                startDate: startDate,
-                shifts: shifts
+          // --- DUPLICATE CHECK LOGIC ---
+          const existingPlan = await ppSchema.findOne({
+            sensor: sensor,
+            startDate: startDate,
+            shifts: shifts
+          });
+          console.log("existingPlan", existingPlan)
+          console.log("duplicateErrors", duplicateErrors)
+          if (existingPlan) {
+            duplicateErrors.push({
+              itemKey: `${sensor} | ${startDate} | ${shifts}`,
+              message: "A record with this Sensor, Start Date, and Shift already exists."
             });
-            console.log("existingPlan",existingPlan)
-          console.log("duplicateErrors",duplicateErrors)
-            if (existingPlan) {
-                duplicateErrors.push({
-                    itemKey: `${sensor} | ${startDate} | ${shifts}`,
-                    message: "A record with this Sensor, Start Date, and Shift already exists."
-                });
-                continue; // Skip saving this item and move to the next one
-            }
-            // -----------------------------
+            continue; // Skip saving this item and move to the next one
+          }
+          // -----------------------------
 
-            // If no duplicate found, proceed to save
-            const createdDateAndTime = getFormattedDateTime();
-            const counter = await ppcount.findOneAndUpdate(
-          { name: "originUniqueId" },
-          { $inc: { value: 1 } },
-          { new: true, upsert: true, setDefaultsOnInsert: true }
-        );
-        const originUniqueId = counter.value;
-        console.log("originUniqueId", originUniqueId);
+          // If no duplicate found, proceed to save
+          const createdDateAndTime = getFormattedDateTime();
+          const counter = await ppcount.findOneAndUpdate(
+            { name: "originUniqueId" },
+            { $inc: { value: 1 } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+          );
+          const originUniqueId = counter.value;
+          console.log("originUniqueId", originUniqueId);
 
-            const Payload = new ppSchema({
-                ...item,
-                originUniqueId,
-                createdDateAndTime
-            });
+          const Payload = new ppSchema({
+            ...item,
+            originUniqueId,
+            createdDateAndTime
+          });
 
-            const storedData = await Payload.save();
-            savedItems.push(storedData);
+          const storedData = await Payload.save();
+          savedItems.push(storedData);
         }
-        console.log('savedItems',savedItems)
+        console.log('savedItems', savedItems)
         // 3. Final Response
         if (duplicateErrors.length > 0) {
-            // If some items failed due to duplication, return a partial success/failure message
-            return res.status(200).json({
-                message: savedItems.length > 0 
-                    ? `Partially Saved. ${savedItems.length} items saved. ${duplicateErrors.length} items skipped due to duplication.`
-                    : "Failed to Save any items due to duplication.",
-                status: savedItems.length > 0 ? 202 : 409, // 202 Accepted for partial success, 409 Conflict otherwise
-                savedData: savedItems,
-                duplicateErrors: duplicateErrors
-            });
+          // If some items failed due to duplication, return a partial success/failure message
+          return res.status(200).json({
+            message: savedItems.length > 0
+              ? `Partially Saved. ${savedItems.length} items saved. ${duplicateErrors.length} items skipped due to duplication.`
+              : "Failed to Save any items due to duplication.",
+            status: savedItems.length > 0 ? 202 : 409, // 202 Accepted for partial success, 409 Conflict otherwise
+            savedData: savedItems,
+            duplicateErrors: duplicateErrors
+          });
         }
 
         res.status(200).json({
-            message: "Saved Successfully",
-            status: 200,
-            data: savedItems
+          message: "Saved Successfully",
+          status: 200,
+          data: savedItems
         });
 
-    } catch (error) {
+      } catch (error) {
         console.error("Error in Save:", error);
 
         if (error.code === 11000) {
-            return res.status(409).json({
-                message: "Duplicate Entry Error",
-                status: 409,
-                error: `Duplicate value for: ${JSON.stringify(error.keyValue)}`
-            });
+          return res.status(409).json({
+            message: "Duplicate Entry Error",
+            status: 409,
+            error: `Duplicate value for: ${JSON.stringify(error.keyValue)}`
+          });
         }
 
         res.status(500).json({
-            message: "Failed to Save",
-            status: 500,
-            error: error.message
+          message: "Failed to Save",
+          status: 500,
+          error: error.message
         });
-    }
-},
+      }
+    },
     getListOfPP: async (body, res) => {
       try {
         const List = await ppSchema.find()
@@ -867,6 +719,9 @@ module.exports = (() => {
 
     },
   }
+
+
+
 
 
 

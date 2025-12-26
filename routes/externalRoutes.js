@@ -22,7 +22,14 @@ module.exports = (() => {
   router.put('/Smart_Factory/updateExitUser/:UniqueId', externalApiHandler.updateUserCreation);
   router.get('/Smart_Factory/getAllUserList', externalApiHandler.getAllUser);
   router.post('/Smart_Factory/authenticationLogin', externalApiHandler.submitLogin);
-   router.post('/Smart_Factory/resetPassword', externalApiHandler.reset);
-      router.post('/Smart_Factory/forgotPassword', externalApiHandler.forgot);
+  router.post('/Smart_Factory/resetPassword', externalApiHandler.reset);
+  router.post('/Smart_Factory/forgotPassword', externalApiHandler.forgot);
+
+  router.post('/Gate_Entry/fetchPdfGateEntry', externalApiHandler.fetchGateEntryPdf);
+  router.post('/Gate_Entry/GateEntryCreation', externalApiHandler.GateEntryCreation);
+  
+  router.post('/Gate_Entry/fetchGateEntryChange', externalApiHandler.fetchGateEntryChange);
+  router.post('/Gate_Entry/GateEntryChange', externalApiHandler.GateEntryChange);
+  
   return router;
 })();

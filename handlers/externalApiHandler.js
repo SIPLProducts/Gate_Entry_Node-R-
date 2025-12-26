@@ -20,6 +20,12 @@ module.exports = (() => {
     submitLogin: (req, res) => externalApiMethods.userLogin(req, res),
      reset: (req, res) => externalApiMethods.resetPassword(req, res),
      forgot: (req, res) => externalApiMethods.forgotPassword(req, res),
+
+     fetchGateEntryPdf:(req, res) => externalApiMethods.fetchGateEntryPdf(req.body, res),
+     GateEntryCreation:(req, res) => externalApiMethods.GateEntryCreation(req.body, res),
+     GateEntryChange:(req, res) => externalApiMethods.GateEntryChange(req.body, res),
+     fetchGateEntryChange:(req, res) => externalApiMethods.fetchGateEntryChange(req.body, res),
+
      
   };
 })();
