@@ -339,6 +339,32 @@ module.exports = (() => {
       }
     },
 
+    ReportanlaysisDataTable: async (body, res) => {
+      try {
+        console.log(
+          "GE F",
+          JSON.stringify(body, null, 2)
+        );
+        const response = await sapAxios.post(
+          config.THIRD_PARTY_API_URL_POST_Report,
+          body,
+          {
+            headers: {
+              Authorization: getAuthHeader()
+            }
+          }
+        );
+        console.log(
+          "fetch GE",
+          JSON.stringify(response.data, null, 2)
+        );
+        res.json(response.data);
+      } catch (error) {
+        handleAxiosError(error, "fetch change Gate Entry");
+        res.status(500).json({ error: "fetch change Gate Entry" });
+      }
+    },
+
 
 
 

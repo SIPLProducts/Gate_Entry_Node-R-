@@ -27,9 +27,11 @@ module.exports = (() => {
 
   router.post('/Gate_Entry/fetchPdfGateEntry', externalApiHandler.fetchGateEntryPdf);
   router.post('/Gate_Entry/GateEntryCreation', externalApiHandler.GateEntryCreation);
-  
+
   router.post('/Gate_Entry/fetchGateEntryChange', externalApiHandler.fetchGateEntryChange);
   router.post('/Gate_Entry/GateEntryChange', externalApiHandler.GateEntryChange);
-  
+
+  router.post('/Gate_Entry/ReportanlaysisDataTable', externalApiHandler.ReportanlaysisDataTable);
+
   return router;
 })();
