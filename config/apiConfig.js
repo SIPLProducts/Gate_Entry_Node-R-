@@ -23,5 +23,9 @@ module.exports = (() => {
     THIRD_PARTY_API_URL_POST_Report: `${baseUrl}/gate_entry/report/list?sap-client=300`,
     THIRD_PARTY_API_URL_POST_Adduser: `${baseUrl}/gate_entry/login/login?sap-client=300`,
     THIRD_PARTY_API_URL_GET_DisplayTable: `${baseUrl}/gate_entry/login/login?sap-client=300`,
+    THIRD_PARTY_API_URL_POST_fetch_Exit_Cancel: `${baseUrl}/gate_entry/process/gates?sap-client=300`,
+    THIRD_PARTY_API_URL_POST_save_Exit_Cancel: `${baseUrl}/gate_entry/process/gates?sap-client=300`,
+    THIRD_PARTY_API_URL_POST_Edit: `${baseUrl}/gate_entry/login/login?sap-client=300`,
+
   };
 })();

@@ -36,6 +36,8 @@ module.exports = (() => {
 
   router.post('/Gate_Entry/Adduser', externalApiHandler.AddUser);
   router.get('/Gate_Entry/DisplayTable', externalApiHandler.DisplayTable);
-
+  router.post('/Gate_Entry/fetch_Exit_Cancel', externalApiHandler.fetch_Exit_Cancel);
+  router.post('/Gate_Entry/save_Exit_Cancel', externalApiHandler.save_Exit_Cancel);
+router.post('/Gate_Entry/EditUser', externalApiHandler.UserEdit);
   return router;
 })();
