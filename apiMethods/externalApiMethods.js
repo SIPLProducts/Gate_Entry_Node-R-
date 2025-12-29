@@ -364,6 +364,53 @@ module.exports = (() => {
         res.status(500).json({ error: "fetch change Gate Entry" });
       }
     },
+    AddUser: async (body, res) => {
+      try {
+        console.log(
+          "GE F",
+          JSON.stringify(body, null, 2)
+        );
+        const response = await sapAxios.post(
+          config.THIRD_PARTY_API_URL_POST_Adduser,
+          body,
+          {
+            headers: {
+              Authorization: getAuthHeader()
+            }
+          }
+        );
+        console.log(
+          "fetch GE",
+          JSON.stringify(response.data, null, 2)
+        );
+        res.json(response.data);
+      } catch (error) {
+        handleAxiosError(error, "fetch change Gate Entry");
+        res.status(500).json({ error: "fetch change Gate Entry" });
+      }
+    },
+
+    DisplayTable: async (body, res) => {
+      try {
+        // console.log(
+        //   "Sending GET payload to plant API:",
+        //   JSON.stringify(body, null, 2)
+        // );
+        const response = await axios.get(config.THIRD_PARTY_API_URL_GET_DisplayTable, {
+          headers: {
+            Authorization: getAuthHeader(),
+          },
+        });
+        // console.log(
+        //   "GET Response from plant API:",
+        //   JSON.stringify(response.data, null, 2)
+        // );
+        res.json(response.data);
+      } catch (error) {
+        handleAxiosError(error, "plant");
+        res.status(500).json({ error: "Failed to process GET request" });
+      }
+    },
 
 
 

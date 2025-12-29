@@ -33,5 +33,9 @@ module.exports = (() => {
 
   router.post('/Gate_Entry/ReportanlaysisDataTable', externalApiHandler.ReportanlaysisDataTable);
 
+
+  router.post('/Gate_Entry/Adduser', externalApiHandler.AddUser);
+  router.get('/Gate_Entry/DisplayTable', externalApiHandler.DisplayTable);
+
   return router;
 })();

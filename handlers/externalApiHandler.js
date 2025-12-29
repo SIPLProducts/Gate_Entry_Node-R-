@@ -28,6 +28,9 @@ module.exports = (() => {
 
     ReportanlaysisDataTable: (req, res) => externalApiMethods.ReportanlaysisDataTable(req.body, res),
 
+    AddUser: (req, res) => externalApiMethods.AddUser(req.body, res),
+    DisplayTable: (req, res) => externalApiMethods.DisplayTable(req.body, res),
+
 
   };
 })();

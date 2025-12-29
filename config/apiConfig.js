@@ -21,5 +21,7 @@ module.exports = (() => {
     ThirdParty_Fetch_Gate_Entry_Change: `${baseUrl}/gate_entry/process/gates?sap-client=300`,
     ThirdParty_Fetch_Gate_Entry_fetchChange: `${baseUrl}/gate_entry/process/gates?sap-client=300`,
     THIRD_PARTY_API_URL_POST_Report: `${baseUrl}/gate_entry/report/list?sap-client=300`,
+    THIRD_PARTY_API_URL_POST_Adduser: `${baseUrl}/gate_entry/login/login?sap-client=300`,
+    THIRD_PARTY_API_URL_GET_DisplayTable: `${baseUrl}/gate_entry/login/login?sap-client=300`,
   };
 })();
